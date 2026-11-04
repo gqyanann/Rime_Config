@@ -92,7 +92,8 @@ function Invoke-WeaselCommand {
     # 优先走无头部署：WeaselDeployer.exe 会弹出 GUI 对话框并永久阻塞，
     # 后台自动同步一旦触发就会挂死。deploy_headless.ps1 直接调 rime.dll 完成
     # 同样的 maintenance，不创建任何窗口。
-    $Headless = Join-Path $ScriptDir "deploy_headless.ps1"
+$Headless = Join-Path $ScriptDir "deploy_headless.ps1"
+    if (-not (Test-Path $Headless)) { $Headless = Join-Path $RimeDir "deploy_headless.ps1" }
     if (Test-Path $Headless) {
         Log-Verbose "正在调用无头部署: $Headless"
         try {
