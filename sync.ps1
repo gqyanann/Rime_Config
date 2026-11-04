@@ -62,6 +62,20 @@ if ($Cmd) {
 }
 Log-Verbose "OpenSSL 可执行文件路径: $OpenSSL"
 
+# 定位 tar：必须用 Windows 自带 bsdtar，Git/GNU tar 会把 "D:\..." 当远程主机名解析而失败
+$TarExe = Join-Path $env:SystemRoot "System32\tar.exe"
+if (-not (Test-Path $TarExe)) {
+    $TarCmd = Get-Command "tar" -ErrorAction SilentlyContinue
+    if ($TarCmd) { $TarExe = $TarCmd.Source }
+}
+Log-Verbose "tar 可执行文件路径: $TarExe"
+
+# 禁止任何 git 交互式凭证提示：自动同步在后台跑，一旦等输入就会永久挂住
+$env:GIT_TERMINAL_PROMPT = "0"
+$env:GCM_INTERACTIVE = "never"
+$env:GCM_GUI_PROMPT = "0"
+$env:GIT_ASKPASS = "echo"
+
 function Show-Balloon {
     param([string]$Title = "Rime 词频同步", [string]$Message = "", [string]$Icon = "Info")
     try {
@@ -75,6 +89,24 @@ function Show-Balloon {
 
 function Invoke-WeaselCommand {
     param([string]$Argument)
+    # 优先走无头部署：WeaselDeployer.exe 会弹出 GUI 对话框并永久阻塞，
+    # 后台自动同步一旦触发就会挂死。deploy_headless.ps1 直接调 rime.dll 完成
+    # 同样的 maintenance，不创建任何窗口。
+    $Headless = Join-Path $ScriptDir "deploy_headless.ps1"
+    if (Test-Path $Headless) {
+        Log-Verbose "正在调用无头部署: $Headless"
+        try {
+            $hp = Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-WindowStyle","Hidden","-File","`"$Headless`"" -WindowStyle Hidden -PassThru
+            if (-not $hp.WaitForExit(600000)) {
+                Log-Message "⚠️ 无头部署超过 600 秒，已强制结束。"
+                try { $hp.Kill() } catch {}
+            }
+            Log-Verbose "无头部署结束，退出码: $($hp.ExitCode)"
+            return
+        } catch {
+            Log-Verbose "无头部署失败，回退 WeaselDeployer: $_"
+        }
+    }
     $Deployer = Get-ChildItem -Path "${env:ProgramFiles(x86)}\Rime", "${env:ProgramFiles}\Rime" -Filter "WeaselDeployer.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($Deployer) {
         Log-Verbose "正在调用 WeaselDeployer: $($Deployer.FullName) $Argument"
@@ -85,7 +117,10 @@ function Invoke-WeaselCommand {
             $psi.CreateNoWindow = $true
             $psi.UseShellExecute = $false
             $proc = [System.Diagnostics.Process]::Start($psi)
-            $proc.WaitForExit()
+            if (-not $proc.WaitForExit(60000)) {
+                Log-Message "⚠️ WeaselDeployer 60 秒未退出（可能在等待界面交互），已强制结束。"
+                try { $proc.Kill() } catch {}
+            }
             Log-Verbose "WeaselDeployer $Argument 执行完成，退出码: $($proc.ExitCode)"
         } catch {
             & $Deployer.FullName $Argument
@@ -441,7 +476,7 @@ if ($ForcePush) {
             $TempTar = Join-Path $env:TEMP "rime_vault.tar.gz"
             try {
                 Push-Location $ScriptDir
-                tar -czf $TempTar custom_phrase.txt snippets.custom.yaml sync 2>$null
+                & $TarExe -czf $TempTar custom_phrase.txt snippets.custom.yaml sync 2>$null
                 if (Test-Path $TempTar) {
                     $env:RIME_VAULT_PASS = $VaultPass
                     & $OpenSSL enc -aes-256-cbc -salt -pbkdf2 -pass env:RIME_VAULT_PASS -in $TempTar -out $VaultEnc 2>$null
@@ -504,7 +539,7 @@ if ((Test-Path $VaultEnc) -and $OpenSSL) {
             }
 
             Log-Verbose "OpenSSL 解密完成，正在通过 tar 解压到临时隔离区: $TempUnpackDir"
-            tar -xzf $TempTar -C $TempUnpackDir 2>$null
+            & $TarExe -xzf $TempTar -C $TempUnpackDir 2>$null
             Remove-Item -Path $TempTar -Force -ErrorAction SilentlyContinue
 
             $DecCustom = Join-Path $TempUnpackDir "snippets.custom.yaml"
@@ -630,7 +665,7 @@ if ($OpenSSL) {
         $TempTar = Join-Path $env:TEMP "rime_vault.tar.gz"
         try {
             Push-Location $ScriptDir
-            tar -czf $TempTar custom_phrase.txt snippets.custom.yaml sync 2>$null
+            & $TarExe -czf $TempTar custom_phrase.txt snippets.custom.yaml sync 2>$null
             if (Test-Path $TempTar) {
                 $env:RIME_VAULT_PASS = $VaultPass
                 & $OpenSSL enc -aes-256-cbc -salt -pbkdf2 -pass env:RIME_VAULT_PASS -in $TempTar -out $VaultEnc 2>$null
