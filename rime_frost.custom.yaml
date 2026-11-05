@@ -73,3 +73,8 @@ patch:
   # 提高到 2 后：英文词（含补全）稳定置顶，同时不影响中文候选
   # （实测 men/fan/tan/pin/dan 等与英文同形的拼音音节仍正确给出中文）。
   "melt_eng/initial_quality": 2
+
+  # 单字母不再让英文词/缩写抢占首位（mode: all 会与 lua 内置大词表合并）
+  "reduce_english_filter/mode": all
+  "reduce_english_filter/idx": 8
+  "reduce_english_filter/words": [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z]
