@@ -77,3 +77,7 @@
   "reduce_english_filter/mode": all
   "reduce_english_filter/idx": 8
   "reduce_english_filter/words": [a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z]
+
+  # 自定义短语动态调频：从只读 stabledb 改成 tabledb，
+  # custom_phrase.txt 里的词会随使用频率自动前移（越用越靠前）。
+  "custom_phrase/db_class": tabledb
