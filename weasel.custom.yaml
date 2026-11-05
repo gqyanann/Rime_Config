@@ -1,4 +1,4 @@
-# Weasel（小狼毫）界面皮肤
+﻿# Weasel（小狼毫）界面皮肤
 # 风格：macOS 现代简约风 —— 深色 / 浅色两套，跟随系统自动切换
 # 来源：kylin 的 Weasel 皮肤配置，已按本机实际情况适配
 #
@@ -22,11 +22,11 @@ patch:
     color_scheme: macOS_Light        # 白天配色
     color_scheme_dark: macOS_Dark    # 系统深色时自动切这套
     font_face: "PingFang SC, Microsoft YaHei, Segoe UI"
-    font_point: 11
+    font_point: 13
     label_font_face: "D-DIN, PingFang SC, Microsoft YaHei"
-    label_font_point: 8
+    label_font_point: 10
     comment_font_face: "PingFang SC, Microsoft YaHei"
-    comment_font_point: 10
+    comment_font_point: 12
     label_format: "%s"               # 序号只留数字，不带点或括号
     mark_text: ""                    # 选中项不加额外标记
 
@@ -43,16 +43,16 @@ patch:
       border_width: 0                # 去掉窗口描边（macOS 风格的干净边）
       align_type: center
       max_width: 1200
-      min_width: 10
-      margin_x: 8
-      margin_y: 5
-      candidate_spacing: 4
-      hilite_spacing: 3
-      hilite_padding: 3
-      hilite_padding_x: 6
-      corner_radius: 14              # 候选窗外圆角
-      round_corner: 12               # 选中色块圆角
-      shadow_radius: 8
+      min_width: 12
+      margin_x: 10
+      margin_y: 6
+      candidate_spacing: 5
+      hilite_spacing: 4
+      hilite_padding: 4
+      hilite_padding_x: 7
+      corner_radius: 17              # 候选窗外圆角
+      round_corner: 14               # 选中色块圆角
+      shadow_radius: 10
       shadow_offset_x: 0
       shadow_offset_y: 2
 
