@@ -1,45 +1,61 @@
+# Weasel（小狼毫）界面皮肤
+# 风格：macOS 现代简约风 —— 深色 / 浅色两套，跟随系统自动切换
+# 来源：kylin 的 Weasel 皮肤配置，已按本机实际情况适配
+#
+# ⚠️ 改完要同步两个地方：
+#    E:\Rime\Data\weasel.custom.yaml   （引擎实际读这个）
+#    E:\Rime\Config\weasel.custom.yaml （仓库版；sync.ps1 每轮都会拿它覆盖用户目录同名文件）
+#
+# ⚠️ 生效命令（不要用开始菜单的图形设定，那个会弹 WeaselDeployer 卡住）：
+#    powershell -NoProfile -ExecutionPolicy Bypass -File E:\Rime\Data\deploy_headless.ps1 -ConfigFile weasel.yaml
+
 patch:
-  # 基础行为设置 (Windows 小狼毫 Weasel 昼夜自适应)
-  "style/color_scheme": rheatin_solarized_light
-  "style/color_scheme_dark": rheatin_solarized
-  "style/horizontal": true
-  "style/inline_preedit": false
+  # ─── 全局交互 ───
+  show_notifications: false        # 关闭方案切换气泡，保持输入纯净
+  show_notifications_time: 800     # 气泡时长 (ms)
+  global_ascii: false              # 中英切换不跨窗口广播
 
-  # 字体设定 (思源宋体 Heavy + Symbols Nerd Font 符号回退)
-  "style/font_face": "Source Han Serif SC Heavy, 思源宋体 Heavy, Source Han Serif SC, 思源宋体, SourceHanSerifSC-Heavy, SimSun, Microsoft YaHei, Symbols Nerd Font Mono, Symbols Nerd Font"
-  "style/label_font_face": "Source Han Serif SC Heavy, 思源宋体 Heavy, Microsoft YaHei"
-  "style/comment_font_face": "Source Han Serif SC Heavy, 思源宋体 Heavy, Microsoft YaHei"
-  "style/font_point": 14
-  "style/label_font_point": 11
-  "style/comment_font_point": 12
+  # ─── 字体排版 ───
+  # font_face 用逗号分隔会作为 fallback 链依次尝试；本机没有 PingFang SC / D-DIN，
+  # 实际落到 Microsoft YaHei。
+  style:
+    color_scheme: macOS_Light        # 白天配色
+    color_scheme_dark: macOS_Dark    # 系统深色时自动切这套
+    font_face: "PingFang SC, Microsoft YaHei, Segoe UI"
+    font_point: 11
+    label_font_face: "D-DIN, PingFang SC, Microsoft YaHei"
+    label_font_point: 8
+    comment_font_face: "PingFang SC, Microsoft YaHei"
+    comment_font_point: 10
+    label_format: "%s"               # 序号只留数字，不带点或括号
+    mark_text: ""                    # 选中项不加额外标记
 
-# 现代胶囊排版核心参数
-  "style/layout/border_width": 0
-  "style/layout/corner_radius": 6               # 候选框整体外圆角
-  "style/layout/round_corner": 6                # 胶囊圆角（设大一点形成完整半圆弧）
-  "style/layout/margin_x": 12                    # 候选框左右外边距（大于 hilite_padding_x）
-  "style/layout/margin_y": 8                     # 候选框上下外边距（大于 hilite_padding_y，彻底脱离边缘）
-  "style/layout/candidate_spacing": 16           # 候选词横向间距
-  "style/layout/hilite_spacing": 4               # 序号与汉字间距
-  "style/layout/hilite_padding_x": 8             # 胶囊左右扩展
-  "style/layout/hilite_padding_y": 4             # 胶囊上下扩展
-  "style/layout/align_type": center
+    # ─── 渲染 ───
+    # 原文写 force_dword（0xffffffff 传给 Direct2D 是非法枚举，有崩候选窗的风险），
+    # 这里改成 cleartype：同样是次像素渲染，效果接近且安全。
+    antialias_mode: cleartype
+    horizontal: true                 # 候选横排
+    inline_preedit: true             # 编码直接显示在应用内（行内预编辑）
+    preedit_type: composition        # 预编辑区显示原始编码
 
-  # ══════════════════════════════════════════════════════════════════════════
-  # 分应用中英文自动切换 (Windows / 小狼毫)
-  #
-  # 机制 (已核对 weasel 源码 RimeWithWeasel/RimeWithWeasel.cpp):
-  #   * 键名 = 客户端进程的 exe 文件名 (小写、大小写不敏感)，不是窗口标题、
-  #     不是 AppID、不是子进程名。
-  #   * 值只认 bool。app_options 在**会话创建时**套用一次；同一 App 的
-  #     中/英状态在该 App 自己的会话内保持 (global_ascii: false)。
-  #   * 未列出的 App 不会被设置 ascii_mode，因此回落到 rime_frost 的
-  #     switches/@0/reset: 1 → 英文。这正是「除聊天软件和浏览器外都是英文」。
-  #   * 改了本文件必须「重新部署」才会生效 (小狼毫会重新读取 weasel.yaml)。
-  #
-  # 用 tools/New-AppOptions.ps1 可以自动把当前运行/已安装的程序补全成本文件的
-  # 英文条目，避免遗漏。
-  # ══════════════════════════════════════════════════════════════════════════
+    # ─── 胶囊布局 ───
+    layout:
+      border_width: 0                # 去掉窗口描边（macOS 风格的干净边）
+      align_type: center
+      max_width: 1200
+      min_width: 10
+      margin_x: 8
+      margin_y: 5
+      candidate_spacing: 4
+      hilite_spacing: 3
+      hilite_padding: 3
+      hilite_padding_x: 6
+      corner_radius: 14              # 候选窗外圆角
+      round_corner: 12               # 选中色块圆角
+      shadow_radius: 8
+      shadow_offset_x: 0
+      shadow_offset_y: 2
+
   app_options:
     # ─── 聊天与通讯软件 (自动中文) ───
     wechat.exe:
@@ -164,35 +180,42 @@ patch:
     mstsc.exe:
       ascii_mode: true
 
-  # 自定义配色方案：Rheatin Solarized Light (浅色暖象牙白)
-  "preset_color_schemes/rheatin_solarized_light":
-    name: "Rheatin Solarized Light"
-    author: "Rheatin"
-    label_color: 0x837b65                   # Solarized Base00
-    back_color: 0xe3f6fd                    # Solarized Base3 暖白底色 (0xBBGGRR)
-    border_color: 0xe3f6fd
-    text_color: 0x8236d3                    # 内嵌拼音紫红
-    hilited_text_color: 0x98a12a            # 高亮编码青色
-    candidate_text_color: 0x756e58          # 候选词深墨色 (Base01)
-    comment_text_color: 0x98a12a            # 提示注释青色
-    hilited_candidate_text_color: 0xffffff  # 选中文字纯白
-    hilited_candidate_label_color: 0xffffff # 选中序号纯白
-    hilited_candidate_back_color: 0x8236d3  # 胶囊紫红高亮底色
-    hilited_comment_text_color: 0xe3f6fd
+  # ─── 配色：macOS Dark ───
+  # color_format: rgba —— 8 位十六进制按 0xRRGGBBAA 解析；6 位自动补满 alpha
+  "preset_color_schemes/macOS_Dark":
+    name: "macOS Dark"
+    author: kylin
+    color_format: rgba
+    back_color: 0x202020FF                    # 候选窗底色
+    text_color: 0xF5F5F7                      # 输入编码
+    label_color: 0x98989D                     # 序号
+    candidate_text_color: 0xF5F5F7            # 候选字
+    comment_text_color: 0x98989D              # 注释
+    hilited_text_color: 0xF5F5F7
+    hilited_candidate_back_color: 0x0A84FF    # 选中项背景（macOS 蓝）
+    hilited_candidate_text_color: 0xFFFFFF
+    hilited_label_color: 0xFFFFFF
+    hilited_comment_text_color: 0xFFFFFF
+    candidate_back_color: 0x00000000          # 非选中项背景透明
+    hilited_back_color: 0x00000000
+    shadow_color: 0x00000088                  # 窗口投影
+    hilited_candidate_border_color: 0x00000000
 
-  # 自定义配色方案：Rheatin Solarized
-  "preset_color_schemes/rheatin_solarized":
-    name: "Rheatin Solarized"
-    author: "Rheatin"
-    label_color: 0xa1a093                   # 柔亮白灰序号 (Base1)
-    back_color: 0x362b00                    # Solarized base03 深青墨色
-    border_color: 0x362b00
-    text_color: 0x8236d3                    # 内嵌拼音紫红
-    hilited_text_color: 0x98a12a            # 高亮编码青色
-    candidate_text_color: 0xa1a093          # 候选词纯白
-    comment_text_color: 0xc3f607e7          # 提示注释色
-    hilited_candidate_text_color: 0xffffff  # 选中文字纯白
-    hilited_candidate_label_color: 0xffffff # 选中序号纯白
-    hilited_candidate_back_color: 0x8236d3  # 胶囊紫红高亮底色
-    hilited_comment_text_color: 0x362b00
-    hilited_mark_color: 0xF50AE4E2
+  # ─── 配色：macOS Light ───
+  "preset_color_schemes/macOS_Light":
+    name: "macOS Light"
+    author: kylin
+    color_format: rgba
+    back_color: 0xFFFFFFFF                    # 纯白底（8 位，alpha 补 FF）
+    text_color: 0x1D1D1F                      # 苹果灰
+    label_color: 0x86868B
+    candidate_text_color: 0x1D1D1F
+    comment_text_color: 0x86868B
+    hilited_text_color: 0x1D1D1F
+    hilited_candidate_back_color: 0x007AFF    # 选中项背景（亮蓝）
+    hilited_candidate_text_color: 0xFFFFFF
+    hilited_label_color: 0xFFFFFF
+    hilited_comment_text_color: 0xFFFFFF
+    candidate_back_color: 0x00000000
+    hilited_back_color: 0x00000000
+    shadow_color: 0x00000030                  # 浅投影
