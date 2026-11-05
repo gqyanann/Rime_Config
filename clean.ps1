@@ -10,9 +10,9 @@ param(
 $ErrorActionPreference = "SilentlyContinue"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-if (-not $ScriptDir) { $ScriptDir = Join-Path $env:USERPROFILE "Rime_Config" }
+if (-not $ScriptDir) { $ScriptDir = if ($env:RIME_REPO_DIR) { $env:RIME_REPO_DIR } else { 'E:\Rime\Config' } }
 
-$RimeDir = Join-Path $env:APPDATA "Rime"
+$RimeDir = if ($env:RIME_USERDIR) { $env:RIME_USERDIR } else { 'E:\Rime\Data' }
 if (-not (Test-Path $RimeDir)) {
     exit 0
 }

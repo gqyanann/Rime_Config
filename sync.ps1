@@ -86,8 +86,8 @@ function Get-VaultManifest {
 Log-Message "===== 开始执行 Rime 词频同步 (Auto=$Auto, Verbose=$VerboseLog) ====="
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-if (-not $ScriptDir) { $ScriptDir = Join-Path $env:USERPROFILE "Rime_Config" }
-$RimeDir = Join-Path $env:APPDATA "Rime"
+if (-not $ScriptDir) { $ScriptDir = if ($env:RIME_REPO_DIR) { $env:RIME_REPO_DIR } else { 'E:\Rime\Config' } }
+$RimeDir = if ($env:RIME_USERDIR) { $env:RIME_USERDIR } else { 'E:\Rime\Data' }
 
 Log-Verbose "本地仓库路径 (ScriptDir): $ScriptDir"
 Log-Verbose "小狼毫用户目录 (RimeDir): $RimeDir"
@@ -155,7 +155,7 @@ $Headless = Join-Path $ScriptDir "deploy_headless.ps1"
             Log-Verbose "无头部署失败，回退 WeaselDeployer: $_"
         }
     }
-    $Deployer = Get-ChildItem -Path "${env:ProgramFiles(x86)}\Rime", "${env:ProgramFiles}\Rime" -Filter "WeaselDeployer.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+    $Deployer = Get-ChildItem -Path (Join-Path (Split-Path -Parent $ScriptDir) "Program") -Filter "WeaselDeployer.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($Deployer) {
         Log-Verbose "正在调用 WeaselDeployer: $($Deployer.FullName) $Argument"
         try {

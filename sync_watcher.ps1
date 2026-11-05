@@ -11,9 +11,9 @@ param(
 
 $ErrorActionPreference = "Continue"
 
-$RimeSyncDir = Join-Path $env:APPDATA "Rime\sync"
+$RimeSyncDir = Join-Path $(if ($env:RIME_USERDIR) { $env:RIME_USERDIR } else { 'E:\Rime\Data' }) "sync"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-if (-not $ScriptDir) { $ScriptDir = Join-Path $env:USERPROFILE "Rime_Config" }
+if (-not $ScriptDir) { $ScriptDir = if ($env:RIME_REPO_DIR) { $env:RIME_REPO_DIR } else { 'E:\Rime\Config' } }
 $SyncScript = Join-Path $ScriptDir "sync.ps1"
 $LogFile = Join-Path $env:TEMP "rime_sync.log"
 $StartupFolder = [Environment]::GetFolderPath("Startup")
@@ -111,7 +111,7 @@ $Action = {
     # 安全读取同步脚本路径并唤起 sync.ps1
     $ScriptToRun = $env:RIME_SYNC_SCRIPT_PATH
     if (-not $ScriptToRun -or -not (Test-Path $ScriptToRun)) {
-        $ScriptToRun = Join-Path $env:USERPROFILE "Rime_Config\sync.ps1"
+        $ScriptToRun = Join-Path $ScriptDir "sync.ps1"
     }
 
     if (Test-Path $ScriptToRun) {

@@ -15,8 +15,8 @@ Stop-Process -Name "WeaselDeployer" -Force -ErrorAction SilentlyContinue
 Stop-Process -Name "WeaselServer" -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 1
 
-$RimeDir = Join-Path $env:APPDATA "Rime"
-$PermanentConfigDir = Join-Path $env:USERPROFILE "Rime_Config"
+$RimeDir = if ($env:RIME_USERDIR) { $env:RIME_USERDIR } else { 'E:\Rime\Data' }
+$PermanentConfigDir = if ($env:RIME_REPO_DIR) { $env:RIME_REPO_DIR } else { 'E:\Rime\Config' }
 $RepoUrl = "https://github.com/rheatin/Rime_Config.git"
 $RepoZipUrl = "https://github.com/rheatin/Rime_Config/archive/refs/heads/main.zip"
 $RimeFrostUrl = "https://github.com/gaboolic/rime-frost.git"
@@ -66,8 +66,8 @@ if (-not (Test-Path $PermanentConfigDir)) {
 $SourceDir = $PermanentConfigDir
 
 # 2. 检测与安装 Weasel (小狼毫)
-$WeaselDir = "${env:ProgramFiles(x86)}\Rime\weasel-*"
-$WeaselInstalled = (Test-Path $WeaselDir) -or (Test-Path "${env:ProgramFiles}\Rime\weasel-*")
+$WeaselDir = 'E:\Rime\Program\weasel-*'
+$WeaselInstalled = (Test-Path $WeaselDir)
 
 if (-not $WeaselInstalled) {
     Write-Host "🔍 未检测到小狼毫 (Weasel)，正在尝试自动安装..." -ForegroundColor Yellow
@@ -393,8 +393,8 @@ if (Test-Path $CleanScript) {
 
 # 10. 重新部署小狼毫
 Write-Host "🔄 正在部署小狼毫 (首次编译语言模型需约 15~20 秒)..." -ForegroundColor Cyan
-$Deployer = Get-ChildItem -Path "${env:ProgramFiles(x86)}\Rime", "${env:ProgramFiles}\Rime" -Filter "WeaselDeployer.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-$WeaselServer = Get-ChildItem -Path "${env:ProgramFiles(x86)}\Rime", "${env:ProgramFiles}\Rime" -Filter "WeaselServer.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+$Deployer = Get-ChildItem -Path (Join-Path (Split-Path -Parent $PermanentConfigDir) "Program") -Filter "WeaselDeployer.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+$WeaselServer = Get-ChildItem -Path (Join-Path (Split-Path -Parent $PermanentConfigDir) "Program") -Filter "WeaselServer.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
 
 if ($Deployer) {
     try {
