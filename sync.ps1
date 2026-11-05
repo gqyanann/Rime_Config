@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+﻿#==============================================================================
 # Rime Windows 用户词频与自造词一键/自动同步备份脚本 (支持交互式密码与 AES-256 隐私加密)
 # Repository: https://github.com/rheatin/Rime_Config.git
 # ==============================================================================
@@ -34,6 +34,53 @@ function Log-Verbose {
     if ($VerboseLog) {
         Write-Host "🔍 [VERBOSE] $Msg" -ForegroundColor DarkCyan
     }
+}
+
+
+function Copy-SyncTreeIfChanged {
+    param([string]$SourceDir, [string]$DestDir)
+    if (-not (Test-Path $SourceDir)) { return }
+    if (-not (Test-Path $DestDir)) { New-Item -ItemType Directory -Path $DestDir -Force | Out-Null }
+    Get-ChildItem -Path $SourceDir -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object {
+        $rel = $_.FullName.Substring((Resolve-Path $SourceDir).Path.Length).TrimStart('\')
+        $target = Join-Path $DestDir $rel
+        $targetDir = Split-Path -Parent $target
+        if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
+        $same = $false
+        if (Test-Path $target) {
+            try {
+                $h1 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+                $h2 = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash
+                if ($h1 -eq $h2) { $same = $true }
+            } catch { $same = $false }
+        }
+        if (-not $same) { Copy-Item -LiteralPath $_.FullName -Destination $target -Force }
+    }
+}
+
+function Get-VaultManifest {
+    param([string]$Dir)
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($name in @('custom_phrase.txt','snippets.custom.yaml')) {
+        $p = Join-Path $Dir $name
+        if (Test-Path $p) {
+            $h = (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash
+            [void]$sb.AppendLine("$name $h")
+        } else {
+            [void]$sb.AppendLine("$name MISSING")
+        }
+    }
+    $syncDir = Join-Path $Dir 'sync'
+    if (Test-Path $syncDir) {
+        Get-ChildItem -Path $syncDir -Recurse -File -ErrorAction SilentlyContinue |
+            Sort-Object FullName |
+            ForEach-Object {
+                $rel = $_.FullName.Substring($syncDir.Length).TrimStart('\')
+                $h = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+                [void]$sb.AppendLine("sync/$rel $h")
+            }
+    }
+    return $sb.ToString()
 }
 
 Log-Message "===== 开始执行 Rime 词频同步 (Auto=$Auto, Verbose=$VerboseLog) ====="
@@ -146,11 +193,12 @@ function Invoke-ThreeWaySnippetMerge {
         
         $curT = $null
         $curL = [System.Collections.Generic.List[string]]::new()
+        $TrimBlock = { param($arr) if ($arr.Count -eq 0) { return @() }; $i = $arr.Count - 1; while ($i -ge 0 -and $arr[$i].Trim() -eq "") { $i-- }; if ($i -lt 0) { return @() } else { return @($arr[0..$i]) } }
         Get-Content $path -Encoding UTF8 -ErrorAction SilentlyContinue | ForEach-Object {
             $raw = $_
             $s = $raw.Trim()
             if ($s.StartsWith("/") -and ($s -match '^"?(/\w+)"?:\s*$')) {
-                if ($curT -and $curL.Count -gt 0) { $b[$curT] = $curL.ToArray() }
+                if ($curT -and $curL.Count -gt 0) { $b[$curT] = [string[]](& $TrimBlock $curL) }
                 $curT = $Matches[1]
                 if (-not $o.Contains($curT)) { [void]$o.Add($curT) }
                 $curL = [System.Collections.Generic.List[string]]::new()
@@ -159,7 +207,7 @@ function Invoke-ThreeWaySnippetMerge {
                 [void]$curL.Add($raw)
             }
         }
-        if ($curT -and $curL.Count -gt 0) { $b[$curT] = $curL.ToArray() }
+                if ($curT -and $curL.Count -gt 0) { $b[$curT] = [string[]](& $TrimBlock $curL) }
         return @{ Blocks = $b; Order = $o }
     }
 
@@ -468,7 +516,7 @@ if ($ForcePush) {
     $TargetSync = Join-Path $ScriptDir "sync"
     if (Test-Path $SourceSync) {
         if (-not (Test-Path $TargetSync)) { New-Item -ItemType Directory -Path $TargetSync -Force | Out-Null }
-        Copy-Item -Path (Join-Path $SourceSync "*") -Destination $TargetSync -Recurse -Force -ErrorAction SilentlyContinue
+        Copy-SyncTreeIfChanged -SourceDir $SourceSync -DestDir $TargetSync
     }
 
     if ($OpenSSL) {
@@ -578,7 +626,7 @@ if ((Test-Path $VaultEnc) -and $OpenSSL) {
                 }
                 if (Test-Path $DecSync) {
                     Copy-Item -Path (Join-Path $DecSync "*") -Destination (Join-Path $ScriptDir "sync") -Recurse -Force -ErrorAction SilentlyContinue
-                    Copy-Item -Path (Join-Path $DecSync "*") -Destination (Join-Path $RimeDir "sync") -Recurse -Force -ErrorAction SilentlyContinue
+                    Copy-SyncTreeIfChanged -SourceDir $DecSync -DestDir (Join-Path $RimeDir "sync")
                 }
                 Remove-Item -Recurse -Force $TempUnpackDir -ErrorAction SilentlyContinue
 
@@ -623,7 +671,7 @@ if ((Test-Path $VaultEnc) -and $OpenSSL) {
             # 10. 合并词频目录
             if (Test-Path $DecSync) {
                 Copy-Item -Path (Join-Path $DecSync "*") -Destination (Join-Path $ScriptDir "sync") -Recurse -Force -ErrorAction SilentlyContinue
-                Copy-Item -Path (Join-Path $DecSync "*") -Destination (Join-Path $RimeDir "sync") -Recurse -Force -ErrorAction SilentlyContinue
+                Copy-SyncTreeIfChanged -SourceDir $DecSync -DestDir (Join-Path $RimeDir "sync")
             }
 
             Remove-Item -Recurse -Force $TempUnpackDir -ErrorAction SilentlyContinue
@@ -655,12 +703,18 @@ if (Test-Path $SourceSync) {
     Log-Message "正在归档词频文件从 $SourceSync 到 $TargetSync..."
     if (-not (Test-Path $TargetSync)) { New-Item -ItemType Directory -Path $TargetSync -Force | Out-Null }
     
-    Copy-Item -Path (Join-Path $SourceSync "*") -Destination $TargetSync -Recurse -Force -ErrorAction SilentlyContinue
+    Copy-SyncTreeIfChanged -SourceDir $SourceSync -DestDir $TargetSync
     Get-ChildItem -Path $TargetSync -Recurse -File | Where-Object { $_.Extension -ne ".txt" } | Remove-Item -Force -ErrorAction SilentlyContinue
 }
 
 # 12. 对 custom_phrase.txt、snippets.custom.yaml 与 sync/ 进行 AES-256 加密打包 (vault.enc)
-if ($OpenSSL) {
+# 内容指纹没变就跳过重新加密（openssl -salt 每次密文都不同，会造成无意义提交与同步回环）
+$ManifestPath = Join-Path $RimeDir ".vault_manifest"
+$ManifestNow = (Get-VaultManifest -Dir $ScriptDir) -replace "`r`n", "`n"
+$ManifestPrev = if (Test-Path $ManifestPath) { (([System.IO.File]::ReadAllText($ManifestPath)) -replace "`r`n", "`n").TrimStart([char]0xFEFF) } else { "" }
+$VaultChanged = ($ManifestNow -ne $ManifestPrev)
+
+if ($OpenSSL -and $VaultChanged) {
     $VaultPass = Get-VaultPass -Auto:$Auto -ResetPass:$ResetPass
     if ($VaultPass) {
         $TempTar = Join-Path $env:TEMP "rime_vault.tar.gz"
@@ -672,32 +726,42 @@ if ($OpenSSL) {
                 & $OpenSSL enc -aes-256-cbc -salt -pbkdf2 -pass env:RIME_VAULT_PASS -in $TempTar -out $VaultEnc 2>$null
                 Remove-Item -Path $TempTar -Force -ErrorAction SilentlyContinue
                 Log-Message "🔒 隐私短语、私有片段与词频已成功通过 AES-256 加密打包 (vault.enc)！"
+                [System.IO.File]::WriteAllText($ManifestPath, $ManifestNow, (New-Object System.Text.UTF8Encoding($false)))
             }
             Pop-Location
         } catch {}
     }
+} elseif ($OpenSSL) {
+    Log-Verbose "隐私包内容未变化，跳过重新加密与提交（避免同步回环）"
 }
-
 # 13. 提交并推送到 GitHub (仅提交密文包与脱敏模板)
 if (Test-Path (Join-Path $ScriptDir ".git")) {
     Push-Location $ScriptDir
     git add vault.enc custom_phrase.example.txt snippets.yaml snippets.custom.example.yaml 2>$null
     $Status = git status --porcelain
-    
-    if ($Status) {
+    $Ahead = (& git rev-list --count origin/main..HEAD 2>$null) | Out-String
+    $Ahead = if ($Ahead) { [int]($Ahead.Trim()) } else { 0 }
+
+    # 有本地改动就提交；如果有未推送的提交（比如上次网络断了），也要继续 push
+    if ($Status -or $Ahead -gt 0) {
         $prevEAP = $ErrorActionPreference
         $ErrorActionPreference = "SilentlyContinue"
-        $CommitOut = (& git commit -m "sync(windows): 自动同步加密词频与短语 $DateStr" 2>&1) | Out-String
+        if ($Status) {
+            $CommitOut = (& git commit -m "sync(windows): 自动同步加密词频与短语 $DateStr" 2>&1) | Out-String
+            if ($CommitOut) { Log-Message "Git Commit: $($CommitOut.Trim())" }
+        } else {
+            Log-Message "检测到 $Ahead 个未推送的提交，继续尝试推送..."
+        }
         $PushOut = (& git push origin main 2>&1) | Out-String
+        $PushCode = $LASTEXITCODE
         $ErrorActionPreference = $prevEAP
-        if ($CommitOut) { Log-Message "Git Commit: $($CommitOut.Trim())" }
         if ($PushOut) { Log-Message "Git Push 结果: $($PushOut.Trim())" }
-        
-        if ($LASTEXITCODE -eq 0) {
+
+        if ($PushCode -eq 0) {
             Log-Message "🎉 同步并推送到 GitHub 成功！"
             Show-Balloon -Title "Rime 词频同步" -Message "Windows 自造词与短语已安全加密备份到 GitHub！"
         } else {
-            Log-Message "❌ Git Push 失败，请检查网络或 GitHub 权限。"
+            Log-Message "❌ Git Push 失败，请检查网络或 GitHub 权限（提交已保留在本地，下次同步会继续推送）。"
             Show-Balloon -Title "Rime 词频同步" -Message "⚠️ 词频加密包推送失败，请检查网络连接。" -Icon "Warning"
         }
     } else {
