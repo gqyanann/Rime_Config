@@ -1,4 +1,4 @@
-patch:
+﻿patch:
   # 初始状态设为英文 (reset: 1，全局默认英文，仅少数浏览器/聊天软件自动切中文)
   "switches/@0/reset": 1
 
@@ -66,13 +66,12 @@ patch:
     - simplifier@mars
     - uniquifier
 
-  # 英文词典权重。
-  # 默认 0.7 太低：在中文模式下打英文单词时，一旦退格删除一个字母，
-  # 剩余输入码会被重新按拼音切分，中文句子立刻抢占第 1 位，
-  # 正在输入的英文词整个消失（看起来像"回退一格，整段被取消"）。
-  # 提高到 2 后：英文词（含补全）稳定置顶，同时不影响中文候选
-  # （实测 men/fan/tan/pin/dan 等与英文同形的拼音音节仍正确给出中文）。
-  "melt_eng/initial_quality": 2
+  # 英文词典权重（melt_eng）。
+  # 原方案补丁是 2（为了退格删字母时英文词不消失），那会让英文词压在中文前面：
+  # he 出 he/和、所以单字母以前全是英文。0.3 让中文候选稳定在前，
+  # 完整英文词（hello/test/computer）仍能出，只是排在第 1 位之后。
+  # 实测：he→和；hello→hello 仍第 1；git→git；test/computer 退到第 2 位。
+  "melt_eng/initial_quality": 0.3
 
   # 单字母不再让英文词/缩写抢占首位（mode: all 会与 lua 内置大词表合并）
   "reduce_english_filter/mode": all
